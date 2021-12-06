@@ -1,5 +1,6 @@
 import React from 'react';
 import {Line} from 'react-chartjs-2';
+import store from '../utils/store.js';
 
 export default class Testing extends React.Component{
     constructor(props){
@@ -46,6 +47,10 @@ export default class Testing extends React.Component{
                 ]
             }
         }
+    }
+
+    componentDidMount(){
+        console.log(store.getState().resultTrainTest);
     }
 
     render(){

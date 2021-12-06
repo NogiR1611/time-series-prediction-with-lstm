@@ -2,7 +2,7 @@ import React from 'react';
 import {BrowserRouter,Switch,Route} from 'react-router-dom';
 import "./styles/global.css";
 import RestrictedRoute from './utils/restrictedRoute.js';
-import Index from './pages/index.js';
+import Login from './pages/login.js';
 import Dashboard from './pages/dashboard.js';
 
 export default class Router extends React.Component{
@@ -10,7 +10,7 @@ export default class Router extends React.Component{
     return (
       <BrowserRouter>
         <Switch>
-          <Route exact path='/' component={Index} />
+          <Route exact path='/' component={Login} />
           <RestrictedRoute path='/dashboard' component={Dashboard} />
         </Switch>
       </BrowserRouter>
