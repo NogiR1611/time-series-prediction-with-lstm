@@ -1,140 +1,93 @@
 import React from 'react';
-import {withRouter} from 'react-router-dom';
+import { withRouter } from 'react-router-dom';
 import NormalizationTable from './../tables/NormalizationTable.js';
-import {divideTensorToChunks, dataCleaning} from './../utils/helpers';
+import { dataCleaning } from './../utils/helpers';
 import * as tf from '@tensorflow/tfjs';
-import store, {SET_TENSOR_ACTUAL_DATA, SET_TRAIN_INPUTS_DATA, SET_TRAIN_LABELS_DATA} from './../utils/store';
+import store, { SET_DATASET, SET_TENSOR_ACTUAL_DATA, SET_TRAIN_INPUTS_DATA, SET_TRAIN_LABELS_DATA } from './../utils/store';
 
 class PreparationData extends React.Component{
     constructor(props){
         super(props)
         this.state = {
-            normalizedInputsData: null,
-            normalizedLabelsData: null
+            normalized_input_data: null,
+            normalized_label_data: null,
+            cleanedData: []
         }
     }
 
     convertToTensor = (data, quantityTrainSet) => { 
         return tf.tidy(() => {
 
-            const {inputsCleaned, labelsCleaned} = dataCleaning(data);
+            //membuang atribut missing value
+            const reduced_data = data.filter((d, i) => d[Object.keys(d)[1]] !== "-");
 
-            console.log(inputsCleaned);
-            console.log(labelsCleaned);
+            this.setState({ cleanedData: reduced_data });
 
-            const inputTensor = tf.tensor2d(inputsCleaned, [inputsCleaned.length,1]);
-            const labelTensor = tf.tensor2d(labelsCleaned, [labelsCleaned.length,1]);
-            
+            store.dispatch({ type: SET_DATASET, payload: reduced_data });
+
+            //pembersihan noise
+            const { inputs_cleaned, labels_cleaned } = dataCleaning(reduced_data);
+
+            const input_tensor = tf.tensor2d(inputs_cleaned, [inputs_cleaned.length, 1]);
+            const label_tensor = tf.tensor2d(labels_cleaned, [labels_cleaned.length, 1]);
+    
             //Step 3. Normalize the data to the range 0 - 1 using min-max scaling
-            const inputMax = inputTensor.max();
-            const inputMin = inputTensor.min();
-            const labelMax = labelTensor.max();
-            const labelMin = labelTensor.min();
+            const input_max = input_tensor.max();
+            const input_min = input_tensor.min();
+            const label_max = label_tensor.max();
+            const label_min = label_tensor.min();
 
-            inputTensor.sub(inputMin).div(inputMax.sub(inputMin))
+            input_tensor.sub(input_min).div(input_max.sub(input_min))
                 .data()
                 .then(data => {
                     store.dispatch({ 
                         type: SET_TRAIN_INPUTS_DATA,  
                         payload: data.slice(0, Math.round(data.length * quantityTrainSet / 100))
                     })
-                    this.setState({ normalizedInputsData : data })
+                    this.setState({ normalized_input_data : data })
                 })
 
-            labelTensor.sub(labelMin).div(labelMax.sub(labelMin))
+            label_tensor.sub(label_min).div(label_max.sub(label_min))
                 .data()
                 .then(data => {
                     store.dispatch({
                         type: SET_TRAIN_LABELS_DATA,
                         payload: data.slice(0, Math.round(data.length * quantityTrainSet / 100))
                     })
-                    this.setState({ normalizedLabelsData : data })
+                    this.setState({ normalized_label_data : data })
                 })
             
-            const normalizedInputs = inputTensor.sub(inputMin).div(inputMax.sub(inputMin))
+            const normalized_inputs = input_tensor.sub(input_min).div(input_max.sub(input_min))
 
-            const normalizedLabels = labelTensor.sub(labelMin).div(labelMax.sub(labelMin))
-            
+            const normalized_labels = label_tensor.sub(label_min).div(label_max.sub(label_min))
+
             return {
-              inputs: normalizedInputs,
-              labels: normalizedLabels,
+              inputs: normalized_inputs,
+              labels: normalized_labels,
               // Return the min/max bounds so we can use them later.
-              inputMax,
-              inputMin,
-              labelMax,
-              labelMin,
+              input_max,
+              input_min,
+              label_max,
+              label_min,
             }
         })
     }
 
     componentDidMount(){
-        const {dataset, tensorData, parameter : { quantityTrainSet, inputLayersUnit, hiddenLayersUnit } } = store.getState();
-        
-        const { inputs, labels } = this.convertToTensor(dataset, quantityTrainSet);
+        const {dataset, parameter : { quantityTrainSet } } = store.getState();
 
         store.dispatch({ 
             type: SET_TENSOR_ACTUAL_DATA, 
             payload: this.convertToTensor(dataset, quantityTrainSet) 
         });
         
-        // inputs.data().then(data => {
-        //     this.setState({ normalizedInputsData : data })
-        //     console.log(this.state.normalizedInputsData);
-        // });
-
-        // labels.data().then(data => {
-        //     this.setState({ normalizedLabelsData : data })
-        // });
-
-        // console.log(this.state.normalizedInputsData);
-        /*
-        let x = tf.tensor([1,2,3,4,5,6])
-        let y = tf.tensor([1,2,3,4,5,6])
-        
-        let xs = x.reshape([2,3,1]);
-        let ys = y.reshape([2,3,1]);
-
-        xs.print();
-
-        const model = tf.sequential();
-        
-        model.add(tf.layers.dense({ units:3,inputShape:[3,1] }))
-
-        model.add(tf.layers.rnn({
-            cell:[
-                tf.layers.lstmCell({ units:1 }),
-                tf.layers.lstmCell({ units:1 }),
-            ],
-            inputShape: [3,1],
-            returnSequences:true
-        }))
-
-        model.add(tf.layers.dense({ units:1,returnSequences:true }));
-
-        model.compile({
-            optimizer:tf.train.adam(0.01),
-            loss:tf.losses.meanSquaredError
-        });
-
-        await model.fit(xs, ys, { epochs: 20,callbacks:{
-            onEpochEnd : async (epoch,log) => {
-                console.log(log.loss);
-            }
-        }});
-
-        const inputs = tf.tensor3d([[[1],[2],[3]],[[4],[5],[6]]])
-        const pred = model.predict(xs.reshape([2,3,1]));
-        pred.print();
-        */
     }
 
     render(){
-        const {dataset,parameter : { quantityTrainSet }, tensorData } = store.getState();
-    
+        const {dataset, parameter : { quantityTrainSet } } = store.getState();
+
         return (
-            <div
-                className="flex flex-col"
-            >
+            <div className="flex flex-col">
                 <div className="flex flex-col py-4">
                     <div className="flex justify-center">
                         <p className="text-gray-900 font-semibold text-lg">Data {Object.keys(dataset[0])[0]}</p>
@@ -142,15 +95,15 @@ class PreparationData extends React.Component{
                     <div className="flex flex-wrap justify-center">
                         <NormalizationTable 
                             title="Normalisasi Data Training"
-                            propertyData={Object.keys(dataset[0])[0]}
-                            beforeNormalizedData={dataset.slice(0, Math.round(dataset.length * quantityTrainSet / 100 ))}
-                            afterNormalizedData={this.state.normalizedLabelsData && this.state.normalizedLabelsData.slice(0, Math.round(this.state.normalizedLabelsData.length * quantityTrainSet / 100))}
+                            propertyData={this.state.cleanedData.length && Object.keys(this.state.cleanedData[0])[0]}
+                            beforeNormalizedData={this.state.cleanedData.length && this.state.cleanedData.slice(0, Math.round(this.state.cleanedData.length * quantityTrainSet / 100 ))}
+                            afterNormalizedData={this.state.normalized_label_data && this.state.normalized_label_data.slice(0, Math.round(this.state.normalized_label_data.length * quantityTrainSet / 100))}
                         />
                         <NormalizationTable 
                             title="Normalisasi Data Testing"
-                            propertyData={Object.keys(dataset[0])[0]}
-                            beforeNormalizedData={dataset.slice((Math.round(dataset.length * quantityTrainSet/100)),dataset.length)}
-                            afterNormalizedData={this.state.normalizedLabelsData && this.state.normalizedLabelsData.slice((Math.round(this.state.normalizedLabelsData.length * quantityTrainSet/100)),this.state.normalizedLabelsData.length)}
+                            propertyData={this.state.cleanedData.length && Object.keys(this.state.cleanedData[0])[0]}
+                            beforeNormalizedData={this.state.cleanedData.length && this.state.cleanedData.slice((Math.round(this.state.cleanedData.length * quantityTrainSet/100)),this.state.cleanedData.length)}
+                            afterNormalizedData={this.state.normalized_label_data && this.state.normalized_label_data.slice((Math.round(this.state.normalized_label_data.length * quantityTrainSet/100)),this.state.normalized_label_data.length)}
                         />
                     </div>
                 </div>
@@ -161,17 +114,20 @@ class PreparationData extends React.Component{
                     <div className="flex flex-wrap justify-center">
                         <NormalizationTable 
                             title="Normalisasi Data Training"
-                            propertyData={Object.keys(dataset[0])[1]}
-                            beforeNormalizedData={dataset.slice(0,Math.round(dataset.length * quantityTrainSet/100))}
-                            afterNormalizedData={this.state.normalizedInputsData && this.state.normalizedInputsData.slice(0, Math.round(this.state.normalizedInputsData.length * quantityTrainSet/100))}
+                            propertyData={this.state.cleanedData.length && Object.keys(this.state.cleanedData[0])[1]}
+                            beforeNormalizedData={this.state.cleanedData.length && this.state.cleanedData.slice(0,Math.round(this.state.cleanedData.length * quantityTrainSet / 100))}
+                            afterNormalizedData={this.state.normalized_input_data && this.state.normalized_input_data.slice(0, Math.round(this.state.normalized_input_data.length * quantityTrainSet/100))}
                         />
                         <NormalizationTable 
                             title="Normalisasi Data Testing"
-                            propertyData={Object.keys(dataset[0])[1]}
-                            beforeNormalizedData={dataset.slice((Math.round(dataset.length * quantityTrainSet/100)),dataset.length)}
-                            afterNormalizedData={this.state.normalizedInputsData && this.state.normalizedInputsData.slice((Math.round(this.state.normalizedInputsData.length * quantityTrainSet/100)), this.state.normalizedInputsData.length)}
+                            propertyData={this.state.cleanedData.length && Object.keys(this.state.cleanedData[0])[1]}
+                            beforeNormalizedData={this.state.cleanedData.length && this.state.cleanedData.slice((Math.round(this.state.cleanedData.length * quantityTrainSet/100)), this.state.cleanedData.length)}
+                            afterNormalizedData={this.state.normalized_input_data && this.state.normalized_input_data.slice((Math.round(this.state.normalized_input_data.length * quantityTrainSet/100)), this.state.normalized_input_data.length)}
                         />
                     </div>
+                </div>
+                <div className="flex justify-start px-12 py-4">
+                    <h3 className="font-semibold">Data setelah dibersihkan : {this.state.cleanedData && this.state.cleanedData.length} records</h3>
                 </div>
                 <div className="flex justify-end">
                     <button

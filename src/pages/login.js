@@ -38,7 +38,7 @@ class Login extends React.Component{
                 expires: 7,
             });
 
-            Cookies.set('api_token', api_token, {
+            Cookies.set('token', api_token, {
                 expires: 7,
             });
             
@@ -66,7 +66,7 @@ class Login extends React.Component{
     }
 
     componentDidMount(){
-        let api_token = Cookies.get('api_token');
+        let api_token = Cookies.get('token');
 
         if(api_token){
             this.props.history.push('/dashboard');

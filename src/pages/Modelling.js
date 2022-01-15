@@ -1,30 +1,60 @@
 import React from 'react';
 import store, { SET_ADD_PARAMETER } from './../utils/store.js';
+import {vanillaModel, BiLSTMModel, stackedModel} from './../utils/model.js';
 
 export default class Modelling extends React.Component{
     constructor(props){
         super(props)
         this.state = {
-            memoryCells: 128,
+            memoryCells: 8,
             hiddenLayers: 1,
             epochs: 10,
-            learningRate: 0.001
+            learningRate: 0.001,
+            typeModel: 'vanillaLstm',
+            model: null
         }
     }
 
-    handleProcess = () => {
+    handleProcess = async () => {
         store.dispatch({ 
             type: SET_ADD_PARAMETER,
             payload: {
                 memoryCells: Number(this.state.memoryCells),
                 learningRate: Number(this.state.learningRate),
-                hiddenLayers: Number(this.state.hiddenLayers),
                 epochs: Number(this.state.epochs),
+                model: this.state.typeModel
             }
         });
 
+        if(this.state.typeModel === 'vanillaLstm'){
+            const model = vanillaModel();
+            const saved = await model.save('localstorage://my-model-1');
+        }
+
+        if(this.state.typeModel === 'stackedLstm'){
+            const model = stackedModel();
+            const saved = await model.save('localstorage://my-model-1');
+        }
+
+        if(this.state.typeModel === 'BiLstm'){
+            const model = BiLSTMModel();
+            const saved = await model.save('localstorage://my-model-1');
+        }
+
         this.props.history.push('/dashboard/evaluation');
     }
+
+    // componentDidMount(){
+    //     if(this.state.typeModel === 'stackedLstm'){
+    //         this.setState({ model: stackedModel });
+    //     }
+    //     else if(this.state.typeModel === 'BiLstm'){
+    //         this.setState({ model: BiLSTMModel });
+    //     }
+    //     else{
+    //         this.setState({ model: vanillaModel })
+    //     }
+    // }
 
     render(){
         return (
@@ -32,12 +62,14 @@ export default class Modelling extends React.Component{
                 <div className="flex flex-col w-full px-6">
                     <div className="mt-4">
                         <label className="block font-semibold">Model LSTM : </label>
-                        <select className="block w-full font-semibold rounded-md border-2 border-black" onChange={({ target: { value } }) => this.setState({ quantityTrainSet:value })} value={this.state.quantityTrainSet}>
-                            <option value="vanillaLstm">Vanilla LSTM</option>
-                            <option value="stackLstm">Stack LSTM</option>
-                            <option value="biLstm">Bidirectional LSTM</option>
-                            <option value="CnnLstm">CNN - LSTM</option>
-                            <option value="ConvLstm">ConvLSTM</option>
+                        <select 
+                            className="block w-full font-semibold rounded-md border-2 border-black" 
+                            onChange={({ target: { value } }) => this.setState({ typeModel:value })} 
+                            value={this.state.typeModel}
+                        >
+                            <option value='vanillaLstm'>Vanilla LSTM</option>
+                            <option value='stackedLstm'>Stack LSTM</option>
+                            <option value='BiLstm'>Bidirectional LSTM</option>
                         </select>
                     </div>
                     <div className="mt-4">
@@ -53,15 +85,6 @@ export default class Modelling extends React.Component{
                                 );
                             })}
                         </select>
-                    </div>
-                    <div className="mt-4">
-                        <label className="block font-semibold">Jumlah Hidden Layers : </label>
-                        <input
-                            type="number"
-                            className="border-2 border-black w-full font-semibold rounded-md"
-                            onChange={({ target: { value } }) => this.setState({ hiddenLayers:value })}
-                            value={this.state.hiddenLayers} 
-                        />
                     </div>
                     <div className="mt-4">
                         <label className="block font-semibold">Learning Rate : </label>

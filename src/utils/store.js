@@ -12,7 +12,7 @@ const initialState = {
 }
 
 export const SET_USER = 'set_user';
-export const SET_QUANTITY = 'set_quantity';
+export const SET_DATASET = 'set_quantity';
 export const SET_PARAMETER = 'set_parameter';
 export const SET_TENSOR_ACTUAL_DATA = 'set_tensor_actual_data';
 export const SET_TENSOR_PREDICTED_DATA = 'set_tensor_predicted_data';
@@ -21,12 +21,12 @@ export const SET_TRAIN_LABELS_DATA = 'set_train_labels_data';
 export const SET_RESULT_TRAIN_TEST = 'set_result_train_test';
 export const SET_ADD_PARAMETER = 'set_add_parameter';
 
-export default createStore((state = initialState, { type,payload }) => {
+export default createStore((state = initialState, { type, payload }) => {
     if(type === SET_USER){
         state.user = payload
     }
 
-    if(type === SET_QUANTITY){
+    if(type === SET_DATASET){
         state.dataset = payload
     }
 

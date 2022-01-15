@@ -1,11 +1,11 @@
 import React from 'react';
-import {Line} from 'react-chartjs-2';
-import {vanillaModel, BiLSTMModel} from './../utils/model.js';
-import {root_mean_squared_error, dataCleaning, divideTensorToChunks, average, standard_deviation} from './../utils/helpers.js';
+import { Line } from 'react-chartjs-2';
+import { vanillaModel, BiLSTMModel, stackedModel } from './../utils/model.js';
+import { root_mean_squared_error, dataCleaning, divideTensorToChunks, average, standard_deviation } from './../utils/helpers.js';
 import {ReactComponent as StripLoad} from './../assets/icon/StripLoad.svg';
 import * as tf from '@tensorflow/tfjs';
 import store, { SET_RESULT_TRAIN_TEST } from './../utils/store.js';
-import {withRouter} from 'react-router-dom';
+import { withRouter } from 'react-router-dom';
 
 const lossErrorLevel = {
     labels: [...[null]],
@@ -57,10 +57,10 @@ const resultTrainLevel = {
 
 const ListError = ({ error }) => {
 
-    const errorRef = React.useRef();
-    React.useEffect(() => {
-        errorRef.current.scrollIntoView();
-    },[error]);
+    // const errorRef = React.useRef();
+    // React.useEffect(() => {
+    //     errorRef.current.scrollIntoView();
+    // },[error]);
 
     return (
         <div className="w-9/12 mx-auto text-left my-4">
@@ -71,7 +71,6 @@ const ListError = ({ error }) => {
                         <div>{index + 1}. Error : {error}</div>
                     );
                 })}
-                <div ref={errorRef} />
             </div>
         </div>
     )
@@ -93,71 +92,92 @@ class Evaluation extends React.Component{
             listError: [],
             lossError: lossErrorLevel,
             resultTrain: resultTrainLevel,
+            selectedModel: null
         }
     }
 
-    validateModel = async () => {
-        store.dispatch({
-            type: SET_RESULT_TRAIN_TEST,
-            payload: this.state.resultTrain
-        });
+    // selectingModel = () => {
+    //     const { parameter : { model } } = store.getState();
 
-        this.props.history.push('/dashboard/pengujian');
-    }
+    //     if(model === 'stackedLstm'){
+    //         this.setState({ selectedModel: stackedModel() });
+    //     }
+    //     else if(model === 'BiLstm'){
+    //         this.setState({ selectedModel: BiLSTMModel() });
+    //     }
+    //     else{
+    //         this.setState({ selectedModel: vanillaModel() });
+    //     }
 
-    trainModel = async (dataset, tensorActualData, parameter, divideTensorToChunks, model) => {
+    //     return this.state.selectedModel;
+    // }
 
-        const {learningRate, epochs, quantityTrainSet} = parameter;
-        
-        const {inputMax, inputMin, labelMax, labelMin, inputs, labels} = tensorActualData;
-        
+    trainModel = async (dataset, tensorActualData, parameter, model) => {
+
+        const { learningRate, epochs, quantityTrainSet } = parameter;
+            
+        const { input_max, input_min, inputs, labels } = tensorActualData;
+
         await inputs.data().then(data => {
             this.setState({ 
                 actualTrainingInputs : data.slice(0, Math.round(data.length * quantityTrainSet / 100)),
-                actualTestingInputs : data.slice((Math.round(data.length * quantityTrainSet/100)), data.length)
+                actualTestingInputs : data.slice((Math.round(data.length * quantityTrainSet / 100)), data.length)
             })
         });
 
         await labels.data().then(data => {
             this.setState({ 
                 actualTrainingLabels : data.slice(0, Math.round(data.length * quantityTrainSet / 100)),
-                actualTestingLabels : data.slice((Math.round(data.length * quantityTrainSet/100)), data.length)
+                actualTestingLabels : data.slice((Math.round(data.length * quantityTrainSet / 100)), data.length)
             });
         });
 
-        const { inputsCleaned, labelsCleaned } = dataCleaning(dataset);
+        const { inputsCleaned } = dataCleaning(dataset);
 
-        //untuk data pelatihan
-        let trainingLabels = tf.tensor2d(this.state.actualTrainingLabels, [this.state.actualTrainingLabels.length, 1]);
-        let trainingInputs = tf.tensor2d(this.state.actualTrainingInputs, [this.state.actualTrainingInputs.length, 1]);
-        
-        //steps pada shape dalam data tensor training
-        let inputTrainingSteps = trainingInputs.size / divideTensorToChunks.inputs;
-        let labelTrainingSteps = trainingLabels.size / divideTensorToChunks.labels;
+        //untuk mengurangi memori pada data pelatihan dan pengujian
+        const data = tf.tidy(() => {
+            //untuk data pelatihan
+            let trainingLabels = tf.tensor2d(this.state.actualTrainingLabels, [this.state.actualTrainingLabels.length, 1]);
+            let trainingInputs = tf.tensor2d(this.state.actualTrainingInputs, [this.state.actualTrainingInputs.length, 1]);
 
-        //diubah ulang shape data training
-        let xTraining = trainingLabels.reshape([divideTensorToChunks.labels, labelTrainingSteps, 1]);
-        let yTraining = trainingInputs.reshape([divideTensorToChunks.inputs, inputTrainingSteps, 1]);
+            //cari nilai batch size untuk dimensional data training
+            const batchTraining = divideTensorToChunks(trainingInputs.dataSync(), trainingLabels.dataSync());
 
-        //untuk data pengujian
-        let testingLabels = tf.tensor2d(this.state.actualTestingLabels, [this.state.actualTestingLabels.length, 1]);
-        let testingInputs = tf.tensor2d(this.state.actualTestingInputs, [this.state.actualTestingInputs.length, 1]);
+            //steps pada shape dalam data tensor training
+            let inputTrainingSteps = trainingInputs.size / batchTraining.inputs;
+            let labelTrainingSteps = trainingLabels.size / batchTraining.labels;
 
-        //steps pada shape dalam data tensor testing
-        let inputTestingSteps = testingInputs.size / divideTensorToChunks.inputs;
-        let labelTestingSteps = testingLabels.size / divideTensorToChunks.labels;
+            //diubah ulang shape data training
+            let xTraining = trainingLabels.reshape([batchTraining.labels, labelTrainingSteps, 1]);
+            let yTraining = trainingInputs.reshape([batchTraining.inputs, inputTrainingSteps, 1]);
 
-        console.log(labelTestingSteps);
-        console.log(inputTestingSteps);
-        console.log(divideTensorToChunks);
+            //untuk data pengujian
+            let testingLabels = tf.tensor2d(this.state.actualTestingLabels, [this.state.actualTestingLabels.length, 1]);
+            let testingInputs = tf.tensor2d(this.state.actualTestingInputs, [this.state.actualTestingInputs.length, 1]);
+            
+            //cari nilai batch size untuk dimensional data testing
+            const batchTesting = divideTensorToChunks(testingInputs.dataSync(), testingLabels.dataSync());
 
-        //diubah ulang shape data testing
-        let xTesting = testingLabels.reshape([divideTensorToChunks.labels, labelTestingSteps, 1]);
-        let yTesting = testingInputs.reshape([divideTensorToChunks.inputs, inputTestingSteps, 1]);
+            //steps pada shape dalam data tensor testing
+            let inputTestingSteps = testingInputs.size / batchTesting.inputs;
+            let labelTestingSteps = testingLabels.size / batchTesting.labels;
 
-        console.log(xTraining);
-        console.log(xTesting);
-        const window_size = 200;
+            //diubah ulang shape data testing
+            let xTesting = testingLabels.reshape([batchTesting.labels, labelTestingSteps, 1]);
+            let yTesting = testingInputs.reshape([batchTesting.inputs, inputTestingSteps, 1]);
+            
+            console.log('numTensors (in tidy): ' + tf.memory().numTensors);
+            
+            return {
+                xTraining,
+                yTraining,
+                xTesting,
+                yTesting
+            };
+        });
+
+        console.log('numTensors (outside tidy): ' + tf.memory().numTensors);
+
         const batchSize = 100;
         const shuffle = true;
 
@@ -167,10 +187,18 @@ class Evaluation extends React.Component{
             metrics:['acc'],
         });
 
+        console.log('numbytes before : ' + tf.memory().numBytes);
+        console.log(tf.memory());
+        console.log(data.xTraining.shape);
+        console.log(data.yTraining.shape);
+        console.log(data.xTesting.shape);
+        console.log(data.yTesting.shape);
+
         let lossError = [], quantityEpochs = [];
 
         //misal pake data training
-        await model.fit(xTraining, yTraining, { shuffle, batchSize, epochs, callbacks: { 
+        tf.engine().startScope()
+        await model.fit(data.xTraining, data.yTraining, { shuffle, batchSize, epochs, callbacks: { 
             onEpochEnd: async (epoch,log) => {
                 lossError.push(log.loss);
                 quantityEpochs.push(epoch); 
@@ -178,39 +206,59 @@ class Evaluation extends React.Component{
             }
         }});
 
-        const outps = model.predict(yTraining);
+        await model.save('indexeddb://trained-model-1');
+
+        tf.engine().endScope();
+
+        model.summary();
+
+        console.log('numbytes after : ' + tf.memory().numBytes);
+        console.log(tf.memory());
+
+        const outps = model.predict(data.yTesting);
 
         //sedangkan predictnya pakai data testing
-        // const resultPredicted = model.evaluate(xTesting, yTesting, { batchSize: 30});
+        const resultPredicted = model.evaluate(data.xTesting, data.yTesting, { batchSize: 30 });
 
         let lossErrorVar = this.state.lossError; 
 
-        // let normalizedResultInp = resultPredicted[0].mul(inputMax.sub(inputMin)).add(inputMin);
+        // let normalizedResultInp = resultPredicted[0].mul(input_max.sub(input_min)).add(input_min);
         // let normalizedResultLab = resultPredicted[1].mul(labelMax.sub(labelMin)).add(labelMin);
 
         //denormalisasi data testing
-        const unNormActTest = yTesting.mul(inputMax.sub(inputMin)).add(inputMin);
-        const unNormPreds = outps.mul(inputMax.sub(inputMin)).add(inputMin);
+        const unNormActTrain = data.yTraining.mul(input_max.sub(input_min)).add(input_min);
+        const unNormPreds = outps.mul(input_max.sub(input_min)).add(input_min);
+
+        let mergePredictedAndDate = dataset.slice(Math.round(dataset.length * quantityTrainSet / 100), dataset.length).map((value, i) => {
+            return {
+                x : value[Object.keys(value)[0]],
+                y : unNormPreds.dataSync()[i]
+            }
+        });
 
         let resultTrainVar = this.state.resultTrain;
 
         lossErrorVar.labels = quantityEpochs;
         lossErrorVar.datasets[0].data = lossError;
         resultTrainVar.labels = dataset.slice(0, labels.length).map(d => d[Object.keys(d)[0]]);
-        resultTrainVar.datasets[1].data = unNormPreds.dataSync();
-        // resultTrainVar.datasets[1].data = resultPredicted.dataSync();
+        resultTrainVar.datasets[0].data = unNormActTrain.dataSync();
+        resultTrainVar.datasets[1].data = mergePredictedAndDate;
         resultTrainVar.datasets[2].data = inputsCleaned;
 
         this.setState({ loadGraphic:false, lossErrorVar, resultTrainVar });
     }
 
-    componentDidMount(){
-        const {dataset, tensorActualData, trainInputsData, trainLabelsData, parameter} = store.getState();
-        const batchTensor = divideTensorToChunks(trainInputsData, trainLabelsData);
+    async componentDidMount(){
+        const {dataset, tensorActualData, trainInputsData, trainLabelsData, parameter } = store.getState();
 
-        const model = vanillaModel();
+        console.log(dataset.length);
 
-        this.trainModel(dataset, tensorActualData, parameter, batchTensor, model);
+        const batchTensor = divideTensorToChunks(tensorActualData.inputs.dataSync(), tensorActualData.labels.dataSync());
+        
+        const loadedModel = await tf.loadLayersModel('localstorage://my-model-1');
+
+        await this.trainModel(dataset, tensorActualData, parameter, loadedModel);
+        
     }   
 
     // componentDidUpdate(prevProps,prevState){
@@ -243,7 +291,7 @@ class Evaluation extends React.Component{
                         <p className="text-gray-900 text-center font-semibold text-lg">Statistik Error</p>
                         <Line
                             data={{...this.state.lossError}}
-                            options={{
+                             options={{
                                 title:{
                                     display:true,
                                     text:'Average Rainfall per month',
@@ -284,10 +332,10 @@ class Evaluation extends React.Component{
                 </div>
                 <div className="flex justify-end">
                     <button
-                        onClick={this.state.resultTrain.datasets[1].data.length !== 1 ? (e) => e.preventDefault(e) : (e) => e.preventDefault()}
-                        className={`${this.state.resultTrain.datasets[1].data.length !== 1 ? 'bg-blue-500 text-gray-200' : 'bg-gray-200 text-gray-100'} my-6 mr-4 py-2 text-center font-medium hover:bg-opacity-70 active:bg-opacity-20 active:bg-blue-500 transition duration-300 ease-in-out px-2 rounded-md`}
+                        onClick={this.state.resultTrain.datasets[1].data.length !== 1 ? () => this.props.history.push('/dashboard/modelling') : (e) => e.preventDefault()}
+                        className={`${this.state.resultTrain.datasets[1].data.length !== 1 ? 'bg-gray-200 text-gray-900' : 'bg-gray-200 text-gray-100'} my-6 mr-4 py-2 text-center font-medium hover:bg-opacity-70 active:bg-opacity-20 active:bg-blue-500 transition duration-300 ease-in-out px-2 rounded-md`}
                     >
-                        Download PDF
+                        Kembali
                     </button>
                     <button
                         onClick={this.state.resultTrain.datasets[1].data.length !== 1 ? (e) => e.preventDefault() : (e) => e.preventDefault()}

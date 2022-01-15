@@ -1,7 +1,7 @@
 import React from 'react';
 import * as XLSX from 'xlsx';
 import {withRouter} from 'react-router-dom';
-import store,{SET_PARAMETER, SET_QUANTITY} from './../utils/store.js';
+import store,{ SET_PARAMETER, SET_DATASET } from './../utils/store.js';
 import {searchHeadersTable} from './../utils/helpers';
 
 class ParameterCard extends React.Component{
@@ -22,8 +22,9 @@ class ParameterCard extends React.Component{
     }
 
     processData = dataString => {
+        
         const dataStringLines = dataString.split(/\r\n|\n/);
-       // const filteredObjectValue = dataStringLines.filter(x => console.log(Object.values(x)[0])/*Object.values(x)[0].match(/^[a-z]/) && Object.values(x)[1].match(/^[a-z]/)*/);
+        // const filteredObjectValue = dataStringLines.filter(x => console.log(Object.values(x)[0])/*Object.values(x)[0].match(/^[a-z]/) && Object.values(x)[1].match(/^[a-z]/)*/);
         const stringHeader = searchHeadersTable(dataStringLines)[0];
         const headers = stringHeader.split(/,(?![^"]*"(?:(?:[^"]*"){2})*[^"]*$)/);
 
@@ -60,11 +61,14 @@ class ParameterCard extends React.Component{
         const file = e.target.files[0];
         const reader = new FileReader();
         
-        this.setState({ file:e.target.files[0],alertFile:false });
+        this.setState({ file:e.target.files[0], alertFile:false });
+        
         reader.onload = (evt) => {
             //parse data
             const bstr = evt.target.result;
             const wb = XLSX.read(bstr,{ type:'binary' })
+
+            console.log(wb);
 
             //get first worksheet
             const wsname = wb.SheetNames[0];
@@ -72,6 +76,7 @@ class ParameterCard extends React.Component{
             
             //convert array of arrays
             const data = XLSX.utils.sheet_to_csv(ws, { header:1 });
+
             this.processData(data);
         }
         
@@ -89,7 +94,7 @@ class ParameterCard extends React.Component{
                 quantityTrainSet: Number(this.state.quantityTrainSet),
             }
         });
-        store.dispatch({ type: SET_QUANTITY, payload: this.state.dataset });
+        store.dispatch({ type: SET_DATASET, payload: this.state.dataset });
     }
 
     render(){
@@ -131,25 +136,33 @@ class ParameterCard extends React.Component{
                     </button>
                     <button
                         onClick={() => {
-                            store.dispatch({ 
-                                type: SET_PARAMETER,
-                                payload: {
-                                    quantityTrainSet: Number(this.state.quantityTrainSet),
-                                }
-                            });
-                            store.dispatch({ type: SET_QUANTITY, payload: this.state.dataset })
+                            
+                            if(window.location.pathname === '/dashboard'){
+                                store.dispatch({ 
+                                    type: SET_PARAMETER,
+                                    payload: {
+                                        quantityTrainSet: Number(this.state.quantityTrainSet),
+                                    }
+                                });
 
-                            if (this.state.file){
-                                this.setState({ addFile:false })
-                                this.props.history.push('/dashboard/preparation')
+                                store.dispatch({ type: SET_DATASET, payload: this.state.dataset })
+
+                                if (this.state.file){
+                                    this.setState({ addFile:false })
+                                    this.props.history.push('/dashboard/preparation')
+                                }
+                                else{
+                                    this.setState({ alertFile:true })
+                                }
                             }
                             else{
-                                this.setState({ alertFile:true })
+                                this.props.history.push('/dashboard');
+                                window.location.reload();
                             }
                         }}
                         className="flex bg-blue-500 h-12 px-2 rounded-md text-gray-200 font-semibold shadow-md hover:bg-opacity-70 active:bg-opacity-20 active:bg-blue-500 h-12 focus:outline-none transition duration-300 ease-in-out"
                     >
-                        <span className="self-center">Proses</span>
+                        <span className="self-center">{window.location.pathname !== '/dashboard' ? 'Ulangi' : 'Mulai'}</span>
                     </button>
                 </div>
             </div>
