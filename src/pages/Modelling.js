@@ -6,12 +6,12 @@ export default class Modelling extends React.Component{
     constructor(props){
         super(props)
         this.state = {
-            memoryCells: 8,
-            hiddenLayers: 1,
+            memory_cells: 8,
+            hidden_layers: 1,
             epochs: 10,
-            learningRate: 0.001,
-            typeModel: 'vanillaLstm',
-            model: null
+            type_model: 'vanillaLstm',
+            model: null,
+            learning_rate: 0.001
         }
     }
 
@@ -19,42 +19,30 @@ export default class Modelling extends React.Component{
         store.dispatch({ 
             type: SET_ADD_PARAMETER,
             payload: {
-                memoryCells: Number(this.state.memoryCells),
-                learningRate: Number(this.state.learningRate),
+                memory_cells: Number(this.state.memory_cells),
                 epochs: Number(this.state.epochs),
-                model: this.state.typeModel
+                model: this.state.type_model,
+                learning_rate: this.state.learning_rate
             }
         });
 
-        if(this.state.typeModel === 'vanillaLstm'){
+        if(this.state.type_model === 'vanillaLstm'){
             const model = vanillaModel();
-            const saved = await model.save('localstorage://my-model-1');
+            await model.save('indexeddb://my-model-1');
         }
 
-        if(this.state.typeModel === 'stackedLstm'){
+        if(this.state.type_model === 'stackedLstm'){
             const model = stackedModel();
-            const saved = await model.save('localstorage://my-model-1');
+            await model.save('indexeddb://my-model-1');
         }
 
-        if(this.state.typeModel === 'BiLstm'){
+        if(this.state.type_model === 'BiLstm'){
             const model = BiLSTMModel();
-            const saved = await model.save('localstorage://my-model-1');
+            await model.save('indexeddb://my-model-1');
         }
 
         this.props.history.push('/dashboard/evaluation');
     }
-
-    // componentDidMount(){
-    //     if(this.state.typeModel === 'stackedLstm'){
-    //         this.setState({ model: stackedModel });
-    //     }
-    //     else if(this.state.typeModel === 'BiLstm'){
-    //         this.setState({ model: BiLSTMModel });
-    //     }
-    //     else{
-    //         this.setState({ model: vanillaModel })
-    //     }
-    // }
 
     render(){
         return (
@@ -64,8 +52,8 @@ export default class Modelling extends React.Component{
                         <label className="block font-semibold">Model LSTM : </label>
                         <select 
                             className="block w-full font-semibold rounded-md border-2 border-black" 
-                            onChange={({ target: { value } }) => this.setState({ typeModel:value })} 
-                            value={this.state.typeModel}
+                            onChange={({ target: { value } }) => this.setState({ type_model:value })} 
+                            value={this.state.type_model}
                         >
                             <option value='vanillaLstm'>Vanilla LSTM</option>
                             <option value='stackedLstm'>Stack LSTM</option>
@@ -76,24 +64,15 @@ export default class Modelling extends React.Component{
                         <label className="block font-semibold">Memory Cells : </label>
                         <select 
                             className="block w-full font-semibold rounded-md border-2 border-black" 
-                            onChange={({ target: { value } }) => this.setState({ memoryCells:value })} 
-                            value={this.state.memoryCells}
+                            onChange={({ target: { value } }) => this.setState({ memory_cells:value })} 
+                            value={this.state.memory_cells}
                         >
-                            {[8,16,32,64,128,256,512,1024].map(x => {
+                            {[8,16,32,64,128,256].map(x => {
                                 return (
                                     <option value={x}>{x}</option>
                                 );
                             })}
                         </select>
-                    </div>
-                    <div className="mt-4">
-                        <label className="block font-semibold">Learning Rate : </label>
-                        <input
-                            type="number"
-                            className="border-2 border-black w-full font-semibold rounded-md"  
-                            onChange={({ target: { value } }) => this.setState({ learningRate:value })}
-                            value={this.state.learningRate}
-                        />
                     </div>
                     <div className="mt-4">
                         <label className="block font-semibold">Epochs : </label>

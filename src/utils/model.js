@@ -4,22 +4,22 @@ import store from './store.js';
 export const vanillaModel = () => {
     const model = tf.sequential();
 
-    console.log('model used : vanila model');
+    console.log('model used : vanilla model');
 
     tf.ENV.set('WEBGL_PACK',false);
 
     const { parameter } = store.getState();
 
-    const { memoryCells } = parameter;
+    const { memory_cells } = parameter;
     
     //input layer
-    model.add(tf.layers.dense({ inputShape: [null, 1], units: 1 }));
+    model.add(tf.layers.dense({ inputShape: [null, 1], units: 512 }));
     
     //hidden layer
     model.add(tf.layers.lstm({
-        units: memoryCells, 
+        units: memory_cells, 
         inputShape: [null, 1],
-        returnSequences: true
+        returnSequences: true,
     }));
 
     //output layer
@@ -33,21 +33,26 @@ export const stackedModel = () => {
 
     tf.ENV.set('WEBGL_PACK',false);
 
+    console.log('model used : stack model');
+
     const {parameter} = store.getState();
 
-    const {memoryCells} = parameter;
+    const {memory_cells} = parameter;
 
+    //input layer
     model.add(tf.layers.dense({ units: 512, inputShape: [null, 1] }));
     
+    //hidden layer
     model.add(tf.layers.lstm({
-        units: memoryCells, 
+        units: memory_cells, 
         inputShape: [null, 1],
-        returnSequences: true
+        returnSequences: true,
     }));
 
+    //output layer
     model.add(tf.layers.lstm({
-        units: memoryCells, 
-        returnSequences: true
+        units: memory_cells, 
+        returnSequences: true,
     }));
 
     model.add(tf.layers.dense({ units: 1, returnSequences: true }));
@@ -60,17 +65,25 @@ export const BiLSTMModel = () => {
 
     tf.ENV.set('WEBGL_PACK',false);
 
-    const {parameter} = store.getState();
+    console.log('model used : bilstm model');
 
-    const {memoryCells} = parameter;
+    const { parameter } = store.getState();
 
+    const { memory_cells } = parameter;
+
+    //input layer
     model.add(tf.layers.dense({ units: 512, inputShape: [null, 1] }));
     
+    //hidden layer
     const BiLstmLayers = tf.layers.bidirectional({
-        layer : tf.layers.lstm({ units: memoryCells, returnSequences: true }),
+        layer : tf.layers.lstm({ 
+            units: memory_cells, 
+            returnSequences: true,
+        }),
         inputShape: [null, 1],
     });
     
+    //output layer
     model.add(BiLstmLayers);
     
     model.add(tf.layers.dense({ units: 1 }));

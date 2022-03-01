@@ -76,6 +76,8 @@ class PreparationData extends React.Component{
     componentDidMount(){
         const {dataset, parameter : { quantityTrainSet } } = store.getState();
 
+        console.log(dataset);
+        
         store.dispatch({ 
             type: SET_TENSOR_ACTUAL_DATA, 
             payload: this.convertToTensor(dataset, quantityTrainSet) 

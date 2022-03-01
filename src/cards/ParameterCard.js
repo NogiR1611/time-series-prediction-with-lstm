@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx';
 import {withRouter} from 'react-router-dom';
 import store,{ SET_PARAMETER, SET_DATASET } from './../utils/store.js';
 import {searchHeadersTable} from './../utils/helpers';
+import { saveAs } from 'file-saver';
 
 class ParameterCard extends React.Component{
     constructor(props){
@@ -68,8 +69,6 @@ class ParameterCard extends React.Component{
             const bstr = evt.target.result;
             const wb = XLSX.read(bstr,{ type:'binary' })
 
-            console.log(wb);
-
             //get first worksheet
             const wsname = wb.SheetNames[0];
             const ws = wb.Sheets[wsname];
@@ -84,6 +83,7 @@ class ParameterCard extends React.Component{
     }
 
     componentDidMount(){
+        
         store.dispatch({ 
             type: SET_PARAMETER,
             payload: {
@@ -93,13 +93,31 @@ class ParameterCard extends React.Component{
                 epochs: Number(this.state.epochs),
                 quantityTrainSet: Number(this.state.quantityTrainSet),
             }
-        });
+        });                        
+
         store.dispatch({ type: SET_DATASET, payload: this.state.dataset });
+    }
+
+    downloadDataset = () => {
+        // fetch(`https://docs.google.com/spreadsheets/d/18Ua-4wA98vxdfrPsRG0X2CpvK9wMl4Bz/edit?usp=sharing&ouid=110506263671743571295&rtpof=true&sd=true`,{ responseType: 'arraybuffer' })
+        //     .then(res => {
+        //         console.log(res);
+        //         let blob = new Blob([res.data],{
+        //             type : ".csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+        //         });
+
+        //         saveAs(blob, 'harga cabai rawit kota bandung 2017 - 2021.xls');
+        //     })
+        // const blob = new Blob('https://docs.google.com/spreadsheets/d/18Ua-4wA98vxdfrPsRG0X2CpvK9wMl4Bz/edit?usp=sharing&ouid=110506263671743571295&rtpof=true&sd=true', {
+        //     type : ".csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+        // });
+
+        saveAs(`${process.env.PUBLIC_URL}/harga cabai rawit kota bandung 2017 - 2021.xls`, 'harga cabai rawit kota bandung 2017 - 2021.xls');
     }
 
     render(){
         return (
-            <div className="w-3/12 h-1/2 mt-6 ml-4 border border-black rounded-lg p-6 text-gray-900">
+            <div className="w-3/12 h-1/2 mt-6 ml-4 border border-gray-400 rounded-lg p-6 text-gray-900">
                 <div className="flex flex-nowrap border border-gray-400 rounded-xl p-2">
                     <div className="flex-shrink p-2 rounded-md shadow-md bg-gray-200 hover:bg-gray-300 cursor-pointer text-center w-12 h-10 transition duration-300 ease-in-out">
                         <label for="files" className="cursor-pointer">File</label>
@@ -119,7 +137,7 @@ class ParameterCard extends React.Component{
                 <p className="font-semibold">Jumlah Sampel Data : {this.state.dataset ? this.state.dataset.length : null}</p>
                 <div className="mt-4">
                     <label className="block font-semibold">Training Dataset : </label>
-                    <select className="block w-full font-semibold rounded-md border-2 border-black" onChange={({ target: { value } }) => this.setState({ quantityTrainSet:value })} value={this.state.quantityTrainSet}>
+                    <select className="block w-full font-semibold rounded-md outline-none focus:outline-none border-2 border-gray-400" onChange={({ target: { value } }) => this.setState({ quantityTrainSet:value })} value={this.state.quantityTrainSet}>
                         <option value="50">50%</option>
                         <option value="60">60%</option>
                         <option value="70">70%</option>
@@ -127,7 +145,17 @@ class ParameterCard extends React.Component{
                         <option value="90">90%</option>
                     </select>
                 </div>
-                <div className="flex justify-between mt-8">
+                <div
+                    className="my-4"
+                >
+                    <button
+                        onClick={this.downloadDataset}
+                        className="outline-none focus:outline-none text-xs hover:underline hover:text-blue-400"
+                    >
+                        Download contoh dataset
+                    </button>
+                </div>
+                <div className="flex justify-between">
                     <button
                         onClick={() => this.setState(this.baseState)}
                         className="flex bg-gray-200 h-12 px-2 rounded-md text-gray-900 font-semibold shadow-md hover:bg-opacity-70 active:bg-opacity-20 active:bg-gray-200 h-12 focus:outline-none transition duration-300 ease-in-out"

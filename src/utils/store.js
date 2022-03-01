@@ -12,7 +12,7 @@ const initialState = {
 }
 
 export const SET_USER = 'set_user';
-export const SET_DATASET = 'set_quantity';
+export const SET_DATASET = 'set_dataset';
 export const SET_PARAMETER = 'set_parameter';
 export const SET_TENSOR_ACTUAL_DATA = 'set_tensor_actual_data';
 export const SET_TENSOR_PREDICTED_DATA = 'set_tensor_predicted_data';

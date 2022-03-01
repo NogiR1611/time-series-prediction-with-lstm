@@ -2,18 +2,6 @@ export const divideTensorToChunks = (x,y) => {
     let inputs,labels = 0;
     
     if(x){
-        // if(x.length % 7 === 0){
-        //     inputs = 7;
-        // }
-        // else if(x.length % 6 === 0){
-        //     inputs = 6;
-        // }
-        // else if(x.length % 5 === 0){
-        //     inputs = 5;
-        // }
-        // else if(x.length % 4 === 0){
-        //     inputs = 4;
-        // }
         if(x.length % 3 === 0){
             inputs = 3;
         }
@@ -26,18 +14,6 @@ export const divideTensorToChunks = (x,y) => {
     }
 
     if(y){
-        // if(y.length % 7 === 0){
-        //     labels = 7;
-        // }
-        // else if(y.length % 6 === 0){
-        //     labels = 6;
-        // }
-        // else if(y.length % 5 === 0){
-        //     labels = 5;
-        // }
-        // else if(y.length % 4 === 0){
-        //     labels = 4;
-        // }
         if(y.length % 3 === 0){
             labels = 3;
         }
@@ -57,17 +33,17 @@ export const divideTensorToChunks = (x,y) => {
 
 export const dataCleaning = (dataset) => {
 
-    const inputsCleaned = dataset.map((d, i) => {
+    const inputs_cleaned = dataset.map((d, i) => {
         return (Number(d[Object.keys(d)[1]].replace(/\s+|[a-zA-Z]|[^\w]/g, "")));
     });
 
-    const labelsCleaned = dataset.map((d, i) => {
+    const labels_cleaned = dataset.map((d, i) => {
         return (Number(d[Object.keys(d)[0]].replace(/\s+|[^\w]/g, "")));
     });
     
     return {
-        inputsCleaned,
-        labelsCleaned
+        inputs_cleaned,
+        labels_cleaned
     };
 }
 

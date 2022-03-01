@@ -45,10 +45,10 @@ export default class NormalizationTable extends React.Component{
                             <thead>
                                 <tr>
                                     <th className="border-2 border-gray-500 bg-gray-200 font-bold text-gray-700 px-2 text-center">
-                                        Sebelum
+                                        {this.props.leftHeader}
                                     </th>
                                     <th className="border-2 border-gray-500 bg-gray-200 font-bold text-gray-700 px-2 text-center">
-                                        Sesudah
+                                        {this.props.rightHeader}
                                     </th>
                                 </tr>
                             </thead>
@@ -100,3 +100,8 @@ export default class NormalizationTable extends React.Component{
         );
     }
 }
+
+NormalizationTable.defaultProps = {
+    leftHeader: 'Sebelum',
+    rightHeader: 'Sesudah'
+};

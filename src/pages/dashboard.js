@@ -5,6 +5,7 @@ import RestrictedRoute from './../utils/restrictedRoute.js';
 
 //import component
 import Header from './../header/header.js';
+import Footer from './../footer/footer.js';
 import PreparationData from './PreparationData';
 import Modelling from './Modelling.js';
 import Evaluation from './Evaluation.js';
@@ -43,6 +44,7 @@ export default class Dashboard extends React.Component{
                         </div>
                     </div>
                 </div>
+                <Footer />
             </div>
         );
     }
