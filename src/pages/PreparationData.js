@@ -30,7 +30,7 @@ class PreparationData extends React.Component{
 
             const input_tensor = tf.tensor2d(inputs_cleaned, [inputs_cleaned.length, 1]);
             const label_tensor = tf.tensor2d(labels_cleaned, [labels_cleaned.length, 1]);
-    
+            
             //Step 3. Normalize the data to the range 0 - 1 using min-max scaling
             const input_max = input_tensor.max();
             const input_min = input_tensor.min();

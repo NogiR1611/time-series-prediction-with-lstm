@@ -1,5 +1,6 @@
 import React from 'react';
 import { Line } from 'react-chartjs-2';
+import DatePicker from "react-datepicker";
 import { vanillaModel, BiLSTMModel, stackedModel } from './../utils/model.js';
 import { root_mean_squared_error, dataCleaning, divideTensorToChunks, average, standard_deviation } from './../utils/helpers.js';
 import {ReactComponent as StripLoad} from './../assets/icon/StripLoad.svg';
@@ -45,11 +46,20 @@ const resultTrainLevel = {
         data: [...[null]]
       },
       {
-        label: 'Testing Data',
+        label: 'Predicted Data',
         fill: false,
         lineTension: 0.1,
         backgroundColor: 'rgba(52, 217, 95,1)',
         borderColor: 'rgba(52, 217, 95,1)',
+        borderWidth: 2,
+        data: [...[null]]
+      },
+      {
+        label: 'Evaluated Data',
+        fill: false,
+        lineTension: 0.1,
+        backgroundColor: 'rgba(235, 225, 52, 1)',
+        borderColor: 'rgba(235, 225, 52, 1)',
         borderWidth: 2,
         data: [...[null]]
       },
@@ -99,7 +109,28 @@ class Evaluation extends React.Component{
             lossError: lossErrorLevel,
             resultTrain: resultTrainLevel,
             selectedModel: null,
+            startDatePredicted: new Date(),
+            endDatePredicted: new Date()
         }
+    }
+
+    // Date.prototype.addDays = function(days) {
+    //     let date = new Date(this.valueOf());
+    //     date.setDate(date.getDate() + days);
+        
+    //     return date;
+    // }
+
+    getDate = (start, end) => {
+        let dateArr = new Array();
+        let currentDate = start;
+
+        while(currentDate <= end) {
+            currentDate = currentDate.addDays(1);
+            dateArr.push(new Date(currentDate));
+        }
+
+        return dateArr;
     }
 
     trainModel = async (dataset, tensorActualData, parameter, model) => {
@@ -169,19 +200,23 @@ class Evaluation extends React.Component{
                 yTraining,
                 xTesting,
                 yTesting
+                // trainingInputs,
+                // trainingLabels,
+                // testingInputs,
+                // testingLabels
             };
         });
 
         console.log('numTensors (outside tidy): ' + tf.memory().numTensors);
 
+        console.log(data.xTraining);
         console.log(data.xTesting);
-        console.log(data.yTesting);
 
         const batchSize = 100;
         const shuffle = true;
 
         model.compile({
-            optimizer: tf.train.adam(0.0001),
+            optimizer: tf.train.adam(),
             loss: root_mean_squared_error
         });
 
@@ -194,16 +229,14 @@ class Evaluation extends React.Component{
 
         //misal pake data training
         tf.engine().startScope()
-        await model.fit(data.xTraining, data.yTraining, { 
-            shuffle, 
+        await model.fit(data.xTraining, data.yTraining, {
             batchSize, 
             epochs, 
             validationData: [data.xTraining, data.yTraining], 
             callbacks: [
-                //tf.callbacks.earlyStopping({ monitor: 'val_loss' }),
+                tf.callbacks.earlyStopping({ monitor: 'val_loss' }),
                 new tf.CustomCallback({
                     onEpochEnd: async (epoch, log) => {
-                        console.log(log);
                         lossTrainError.push(log.loss);
                         lossTestError.push(log.val_loss);
                         quantityEpochs.push(epoch); 
@@ -225,17 +258,15 @@ class Evaluation extends React.Component{
         // console.log(tf.memory());
         
         //sedangkan predictnya pakai data testing
-        const resultPredicted = await model.evaluate(data.xTesting, data.yTesting, { batchSize: batchSize });
+        const resultPredicted = await model.evaluate(data.xTesting, data.yTesting);
+            
+        // const xs = tf.linspace(0, 1, 10);
 
-        console.log(resultPredicted.dataSync());
+        // const preds = xs.reshape([1, 10, 1]);
 
         const outps = model.predict(data.yTesting);
 
         this.setState({ testingError: resultPredicted.dataSync() });
-
-        console.log(this.state.testingError[0]);
-        // let normalizedResultInp = resultPredicted[0].mul(input_max.sub(input_min)).add(input_min);
-        // let normalizedResultLab = resultPredicted[1].mul(labelMax.sub(labelMin)).add(labelMin);
 
         //denormalisasi data testing
         const unNormActTrain = data.yTraining.mul(input_max.sub(input_min)).add(input_min);
@@ -262,7 +293,7 @@ class Evaluation extends React.Component{
         });
 
         console.log(mergeActualAndPredicted);
-
+        
         let resultTrainVar = this.state.resultTrain;
         let lossErrorVar = this.state.lossError; 
 
@@ -271,8 +302,9 @@ class Evaluation extends React.Component{
         lossErrorVar.datasets[1].data = lossTestError;
         resultTrainVar.labels = dataset.slice(0, labels.length).map(d => d[Object.keys(d)[0]]);
         resultTrainVar.datasets[0].data = unNormActTrain.dataSync();
-        resultTrainVar.datasets[1].data = mergePredictedAndDate;
-        resultTrainVar.datasets[2].data = inputs_cleaned;
+        resultTrainVar.datasets[1].data = unNormPreds.dataSync();
+        resultTrainVar.datasets[2].data = mergePredictedAndDate;
+        resultTrainVar.datasets[3].data = inputs_cleaned;
 
         this.setState({ loadGraphic:false, lossErrorVar, resultTrainVar });
     }
@@ -281,12 +313,11 @@ class Evaluation extends React.Component{
     async componentDidMount(){
 
         const {dataset, tensorActualData, parameter } = store.getState();
-
+        
         const loadedModel = await tf.loadLayersModel('indexeddb://my-model-1');
 
         await this.trainModel(dataset, tensorActualData, parameter, loadedModel);
 
-        console.log(this.state.listTrainingError);
     }   
 
     render(){
@@ -324,12 +355,12 @@ class Evaluation extends React.Component{
                     </div>
                 </div>
                 <div className="relative">
-                    {this.state.loadGraphic ? (
+                    {/* {this.state.loadGraphic ? (
                         <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
                             <StripLoad className="w-16 h-16 bg-transparent" />   
                             <span className="text-gray-900">Mohon Tunggu</span>
                         </div>
-                    ) : null}
+                    ) : null} */}
                     <div className={`w-9/12 mx-auto my-6 ${this.state.loadGraphic ? `bg-white opacity-20` : null}`}>
                         <p className="text-gray-900 text-center font-semibold text-lg">Hasil Prediksi</p>
                         <Line
@@ -347,7 +378,7 @@ class Evaluation extends React.Component{
                             }}
                         />
                     </div>
-                    {/* <div className={`w-9/12 mx-auto my-6 ${this.state.loadGraphic ? `bg-white opacity-20` : null}`}>
+                    <div className={`w-9/12 mx-auto my-6 ${this.state.loadGraphic ? `bg-white opacity-20` : null}`}>
                         <p className="text-gray-900 text-center font-semibold text-lg">Tabel Perbandingan data aktual dan data prediksi</p>
                         <Table 
                             leftHeader={'Tanggal'}
@@ -355,7 +386,24 @@ class Evaluation extends React.Component{
                             rightHeader={'Harga Prediksi'}
                             arrMergeNormalized={this.state.mergeActualAndPredicted}
                         />
-                    </div> */}
+                    </div>
+                    <div className="flex justify-end w-full">
+                        <DatePicker
+                            selected={this.state.startDatePredicted}
+                            onChange={(date) => console.log(date)}
+                            startDate={this.state.startDatePredicted}
+                            endDate={this.state.endDatePredicted}
+                            selectsStart
+                        />
+                        <DatePicker
+                            selected={this.state.endDatePredicted}
+                            onChange={(update) => console.log(update)}
+                            selectsEnd
+                            startDate={this.state.startDatePredicted}
+                            endDate={this.state.endDatePredicted}
+                            minDate={this.state.startDatePredicted}
+                        />
+                    </div>
                 </div>
                 <div className="flex justify-end">
                     <button

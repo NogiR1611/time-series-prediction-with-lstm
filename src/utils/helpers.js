@@ -32,11 +32,12 @@ export const divideTensorToChunks = (x,y) => {
 }
 
 export const dataCleaning = (dataset) => {
-
+    //define harga as input
     const inputs_cleaned = dataset.map((d, i) => {
         return (Number(d[Object.keys(d)[1]].replace(/\s+|[a-zA-Z]|[^\w]/g, "")));
     });
 
+    //define tanggal as label
     const labels_cleaned = dataset.map((d, i) => {
         return (Number(d[Object.keys(d)[0]].replace(/\s+|[^\w]/g, "")));
     });

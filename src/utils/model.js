@@ -79,6 +79,7 @@ export const BiLSTMModel = () => {
         layer : tf.layers.lstm({ 
             units: memory_cells, 
             returnSequences: true,
+            unitForgetBias: true
         }),
         inputShape: [null, 1],
     });
