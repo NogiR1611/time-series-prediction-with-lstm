@@ -1,5 +1,5 @@
 export const divideTensorToChunks = (x,y) => {
-    let inputs,labels = 0;
+    let inputs, targets = 0;
     
     if(x){
         if(x.length % 3 === 0){
@@ -15,40 +15,41 @@ export const divideTensorToChunks = (x,y) => {
 
     if(y){
         if(y.length % 3 === 0){
-            labels = 3;
+            targets = 3;
         }
         else if(y.length % 2 === 0){
-            labels = 2;
+            targets = 2;
         }
         else{
-            labels = 1;
+            targets = 1;
         }
     }
 
     return {
         inputs,
-        labels,
+        targets,
     };
 }
 
 export const dataCleaning = (dataset) => {
-    //define harga as input
-    const inputs_cleaned = dataset.map((d, i) => {
-        return (Number(d[Object.keys(d)[1]].replace(/\s+|[a-zA-Z]|[^\w]/g, "")));
+    
+    //define tanggal as inputs
+    const inputsCleaned = dataset.map((d, i) => {
+        return (Number(d[Object.keys(d)[0]].replace(/\s+|[^\w]/g, "")));
     });
 
-    //define tanggal as label
-    const labels_cleaned = dataset.map((d, i) => {
-        return (Number(d[Object.keys(d)[0]].replace(/\s+|[^\w]/g, "")));
+    //define harga as targets
+    const targetsCleaned = dataset.map((d, i) => {
+        return (Number(d[Object.keys(d)[1]].replace(/\s+|[a-zA-Z]|[^\w]/g, "")));
     });
     
     return {
-        inputs_cleaned,
-        labels_cleaned
+        inputsCleaned,
+        targetsCleaned
     };
 }
 
-export const root_mean_squared_error = (yPred,yTrue) => {
+export const root_mean_squared_error = (yPred, yTrue) => {
     return (((yTrue.sub(yPred)).square()).mean()).sqrt();
 }
 
@@ -86,4 +87,26 @@ export const standard_deviation = (data) => {
 
 export const generate_random_numbers = (min,max) => {
     return Math.random() * (max - min) + min;
+}
+
+export const splitSequences = (arr, size) => {
+    let x = [];
+    let y = [];
+
+    for(let i=0; i<arr.length; i++){
+        let endix = i + size;
+
+        if(endix > arr.length-1) break;
+
+        let seqX = arr.slice(i, endix);
+        let seqY = arr[endix];
+
+        x.push(seqX);
+        y.push(seqY);
+    }
+
+    return {
+        x : x, 
+        y : y
+    };
 }

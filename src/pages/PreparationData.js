@@ -1,7 +1,7 @@
 import React from 'react';
 import { withRouter } from 'react-router-dom';
 import NormalizationTable from './../tables/NormalizationTable.js';
-import { dataCleaning } from './../utils/helpers';
+import { dataCleaning, splitSequences } from './../utils/helpers';
 import * as tf from '@tensorflow/tfjs';
 import store, { SET_DATASET, SET_TENSOR_ACTUAL_DATA, SET_TRAIN_INPUTS_DATA, SET_TRAIN_LABELS_DATA } from './../utils/store';
 
@@ -9,8 +9,8 @@ class PreparationData extends React.Component{
     constructor(props){
         super(props)
         this.state = {
-            normalized_input_data: null,
-            normalized_label_data: null,
+            normalizedInputData: null,
+            normalizedTargetData: null,
             cleanedData: []
         }
     }
@@ -19,74 +19,90 @@ class PreparationData extends React.Component{
         return tf.tidy(() => {
 
             //membuang atribut missing value
-            const reduced_data = data.filter((d, i) => d[Object.keys(d)[1]] !== "-");
+            const reducedData = data.filter((d, i) => d[Object.keys(d)[1]] !== "-");
 
-            this.setState({ cleanedData: reduced_data });
+            //masukan ke state cleanedData dari hasil pembuangan atribut
+            this.setState({ cleanedData: reducedData });
 
-            store.dispatch({ type: SET_DATASET, payload: reduced_data });
+            //selain ke state juga disimpan ke redux
+            store.dispatch({ type: SET_DATASET, payload: reducedData });
 
-            //pembersihan noise
-            const { inputs_cleaned, labels_cleaned } = dataCleaning(reduced_data);
+            //pembersihan noise dari dataset yang sudah dibuang atributnya
+            const { inputsCleaned, targetsCleaned } = dataCleaning(reducedData);
 
-            const input_tensor = tf.tensor2d(inputs_cleaned, [inputs_cleaned.length, 1]);
-            const label_tensor = tf.tensor2d(labels_cleaned, [labels_cleaned.length, 1]);
+            //buatkan data tensor dengan dimensi 2d pada inputsCleaned sebagai tanggal dan targetsCleaned sebagai harga
+            const inputTensor = tf.tensor2d(inputsCleaned, [inputsCleaned.length, 1]);
+            const targetTensor = tf.tensor2d(targetsCleaned, [targetsCleaned.length, 1]);
             
-            //Step 3. Normalize the data to the range 0 - 1 using min-max scaling
-            const input_max = input_tensor.max();
-            const input_min = input_tensor.min();
-            const label_max = label_tensor.max();
-            const label_min = label_tensor.min();
+            //tentukan nilai terbesar dan terkecil pada inputs dan juga targets
+            const inputMax = inputTensor.max();
+            const inputMin = inputTensor.min();
+            const targetMax = targetTensor.max();
+            const targetMin = targetTensor.min();
 
-            input_tensor.sub(input_min).div(input_max.sub(input_min))
+            //normalisasi dataset dengan mengkonversi menjadi rentang antara 0-1 dengan metode min-max scaling sebanyak dua kali
+
+            //normalisasi untuk ditampilkan pada halaman persiapan data
+            
+            //normalisasi pada inputs
+            inputTensor.sub(inputMin).div(inputMax.sub(inputMin))
                 .data()
                 .then(data => {
+                    //hasil normalisasi disimpan pada redux
                     store.dispatch({ 
                         type: SET_TRAIN_INPUTS_DATA,  
                         payload: data.slice(0, Math.round(data.length * quantityTrainSet / 100))
                     })
-                    this.setState({ normalized_input_data : data })
+                    //selain itu juga disimpan pada state
+                    this.setState({ normalizedInputData : data })
                 })
 
-            label_tensor.sub(label_min).div(label_max.sub(label_min))
+            //normalisasi pada targets
+            targetTensor.sub(targetMin).div(targetMax.sub(targetMin))
                 .data()
                 .then(data => {
+                    //hasil normalisasi disimpan pada redux
                     store.dispatch({
                         type: SET_TRAIN_LABELS_DATA,
                         payload: data.slice(0, Math.round(data.length * quantityTrainSet / 100))
                     })
-                    this.setState({ normalized_label_data : data })
+                    //selain itu juga disimpan pada state
+                    this.setState({ normalizedTargetData : data })
                 })
             
-            const normalized_inputs = input_tensor.sub(input_min).div(input_max.sub(input_min))
+            //normmalisasi untuk disimpan pada redux agar dapat digunakan pada halaman selanjutnya
+            
+            //mulai perhitungan normalisasi pada inputs
+            const normalizedInputs = inputTensor.sub(inputMin).div(inputMax.sub(inputMin))
 
-            const normalized_labels = label_tensor.sub(label_min).div(label_max.sub(label_min))
+            //mulai perhitungan normalisasi pada targets
+            const normalizedTargets = targetTensor.sub(targetMin).div(targetMax.sub(targetMin))
 
+            //dari fungsi disini mengembalikan nilai inputs,targets,inputMax,inputMin,targetMax,targetMin
             return {
-              inputs: normalized_inputs,
-              labels: normalized_labels,
-              // Return the min/max bounds so we can use them later.
-              input_max,
-              input_min,
-              label_max,
-              label_min,
+              inputs: normalizedInputs,
+              targets: normalizedTargets,
+              inputMax,
+              inputMin,
+              targetMax,
+              targetMin,
             }
         })
     }
 
     componentDidMount(){
+        //ekstrasi state/nilai dari redux yang sudah disimpan sebelumnya untuk digunakan
         const {dataset, parameter : { quantityTrainSet } } = store.getState();
 
-        console.log(dataset);
-        
+        //dari hasil pengembalian nilai pada fungsi convertToTensor(), simpan pada redux
         store.dispatch({ 
             type: SET_TENSOR_ACTUAL_DATA, 
             payload: this.convertToTensor(dataset, quantityTrainSet) 
         });
-        
     }
 
     render(){
-        const {dataset, parameter : { quantityTrainSet } } = store.getState();
+        const { dataset, parameter : { quantityTrainSet } } = store.getState();
 
         return (
             <div className="flex flex-col">
@@ -98,14 +114,14 @@ class PreparationData extends React.Component{
                         <NormalizationTable 
                             title="Normalisasi Data Training"
                             propertyData={this.state.cleanedData.length && Object.keys(this.state.cleanedData[0])[0]}
-                            beforeNormalizedData={this.state.cleanedData.length && this.state.cleanedData.slice(0, Math.round(this.state.cleanedData.length * quantityTrainSet / 100 ))}
-                            afterNormalizedData={this.state.normalized_label_data && this.state.normalized_label_data.slice(0, Math.round(this.state.normalized_label_data.length * quantityTrainSet / 100))}
+                            beforeNormalizedData={this.state.cleanedData.length && this.state.cleanedData.slice(0,Math.round(this.state.cleanedData.length * quantityTrainSet / 100))}
+                            afterNormalizedData={this.state.normalizedInputData && this.state.normalizedInputData.slice(0, Math.round(this.state.normalizedInputData.length * quantityTrainSet/100))}
                         />
                         <NormalizationTable 
                             title="Normalisasi Data Testing"
                             propertyData={this.state.cleanedData.length && Object.keys(this.state.cleanedData[0])[0]}
-                            beforeNormalizedData={this.state.cleanedData.length && this.state.cleanedData.slice((Math.round(this.state.cleanedData.length * quantityTrainSet/100)),this.state.cleanedData.length)}
-                            afterNormalizedData={this.state.normalized_label_data && this.state.normalized_label_data.slice((Math.round(this.state.normalized_label_data.length * quantityTrainSet/100)),this.state.normalized_label_data.length)}
+                            beforeNormalizedData={this.state.cleanedData.length && this.state.cleanedData.slice((Math.round(this.state.cleanedData.length * quantityTrainSet/100)), this.state.cleanedData.length)}
+                            afterNormalizedData={this.state.normalizedInputData && this.state.normalizedInputData.slice((Math.round(this.state.normalizedInputData.length * quantityTrainSet/100)), this.state.normalizedInputData.length)}
                         />
                     </div>
                 </div>
@@ -117,14 +133,14 @@ class PreparationData extends React.Component{
                         <NormalizationTable 
                             title="Normalisasi Data Training"
                             propertyData={this.state.cleanedData.length && Object.keys(this.state.cleanedData[0])[1]}
-                            beforeNormalizedData={this.state.cleanedData.length && this.state.cleanedData.slice(0,Math.round(this.state.cleanedData.length * quantityTrainSet / 100))}
-                            afterNormalizedData={this.state.normalized_input_data && this.state.normalized_input_data.slice(0, Math.round(this.state.normalized_input_data.length * quantityTrainSet/100))}
+                            beforeNormalizedData={this.state.cleanedData.length && this.state.cleanedData.slice(0, Math.round(this.state.cleanedData.length * quantityTrainSet / 100 ))}
+                            afterNormalizedData={this.state.normalizedTargetData && this.state.normalizedTargetData.slice(0, Math.round(this.state.normalizedTargetData.length * quantityTrainSet / 100))}
                         />
                         <NormalizationTable 
                             title="Normalisasi Data Testing"
                             propertyData={this.state.cleanedData.length && Object.keys(this.state.cleanedData[0])[1]}
-                            beforeNormalizedData={this.state.cleanedData.length && this.state.cleanedData.slice((Math.round(this.state.cleanedData.length * quantityTrainSet/100)), this.state.cleanedData.length)}
-                            afterNormalizedData={this.state.normalized_input_data && this.state.normalized_input_data.slice((Math.round(this.state.normalized_input_data.length * quantityTrainSet/100)), this.state.normalized_input_data.length)}
+                            beforeNormalizedData={this.state.cleanedData.length && this.state.cleanedData.slice((Math.round(this.state.cleanedData.length * quantityTrainSet/100)),this.state.cleanedData.length)}
+                            afterNormalizedData={this.state.normalizedTargetData && this.state.normalizedTargetData.slice((Math.round(this.state.normalizedTargetData.length * quantityTrainSet/100)),this.state.normalizedTargetData.length)}
                         />
                     </div>
                 </div>

@@ -6,41 +6,44 @@ export default class Modelling extends React.Component{
     constructor(props){
         super(props)
         this.state = {
-            memory_cells: 8,
-            hidden_layers: 1,
+            memoryCells: 8,
+            hiddenLayers: 1,
             epochs: 10,
-            type_model: 'vanillaLstm',
+            typeModel: 'vanillaLstm',
             model: null,
-            learning_rate: 0.001
         }
     }
 
+    //mulai lakukan proses untuk penyimpanan parameter dan model terpilih
     handleProcess = async () => {
+
+        //untuk parameter disimpan pada redux sebagai tempat penyimpanan memori
         store.dispatch({ 
             type: SET_ADD_PARAMETER,
             payload: {
-                memory_cells: Number(this.state.memory_cells),
+                memoryCells: Number(this.state.memoryCells),
                 epochs: Number(this.state.epochs),
-                model: this.state.type_model,
-                learning_rate: this.state.learning_rate
+                model: this.state.typeModel,
             }
         });
 
-        if(this.state.type_model === 'vanillaLstm'){
+        //untuk model yang terpilih disimpan pada indexeddb pada browser
+        if(this.state.typeModel === 'vanillaLstm'){
             const model = vanillaModel();
             await model.save('indexeddb://my-model-1');
         }
 
-        if(this.state.type_model === 'stackedLstm'){
+        if(this.state.typeModel === 'stackedLstm'){
             const model = stackedModel();
             await model.save('indexeddb://my-model-1');
         }
 
-        if(this.state.type_model === 'BiLstm'){
+        if(this.state.typeModel === 'BiLstm'){
             const model = BiLSTMModel();
             await model.save('indexeddb://my-model-1');
         }
 
+        //lakukan pemindahan halaman
         this.props.history.push('/dashboard/evaluation');
     }
 
@@ -52,8 +55,8 @@ export default class Modelling extends React.Component{
                         <label className="block font-semibold">Model LSTM : </label>
                         <select 
                             className="block w-full font-semibold rounded-md border-2 border-black" 
-                            onChange={({ target: { value } }) => this.setState({ type_model:value })} 
-                            value={this.state.type_model}
+                            onChange={({ target: { value } }) => this.setState({ typeModel:value })} 
+                            value={this.state.typeModel}
                         >
                             <option value='vanillaLstm'>Vanilla LSTM</option>
                             <option value='stackedLstm'>Stack LSTM</option>
@@ -64,8 +67,8 @@ export default class Modelling extends React.Component{
                         <label className="block font-semibold">Memory Cells : </label>
                         <select 
                             className="block w-full font-semibold rounded-md border-2 border-black" 
-                            onChange={({ target: { value } }) => this.setState({ memory_cells:value })} 
-                            value={this.state.memory_cells}
+                            onChange={({ target: { value } }) => this.setState({ memoryCells:value })} 
+                            value={this.state.memoryCells}
                         >
                             {[8,16,32,64,128,256].map(x => {
                                 return (

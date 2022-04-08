@@ -18,35 +18,37 @@ class Login extends React.Component{
         }
     } 
 
+    //melakukan request login
     requestLogin = async () => {
         try{
+            
             this.setState({ isLoading:true })
+
+            //kirim data akun ke server untuk pengecekan
             const response = await address.post('/users/login',{
                 username : this.state.username,
                 password: this.state.password
             })
             
-            const {api_token} = response.data.data;
-            const {username} = response.data.data;
+            //bila akun login sesuai dengan data di server
+            const { api_token } = response.data.data;
+            const { username } = response.data.data;
 
-            const infoUser = {
-                username: username,
-                api_token: api_token
-            };
-
+            //pasang key pada cookies dengan nama 'user' dan value dari parameter username selama 7 hari masa kadaluwarsa
             Cookies.set('user', username, {
                 expires: 7,
             });
 
+            //pasang key pada cookies dengan nama 'token' dan value dari parameter api_token selama 7 hari masa kadaluwarsa
             Cookies.set('token', api_token, {
                 expires: 7,
             });
-            
-
-            store.dispatch({ type:SET_USER, payload:infoUser });
+    
+            //store.dispatch({ type:SET_USER, payload:infoUser });
             this.props.history.push('/dashboard');
         }
         catch(e){
+            //bila ada error diberitahu kepada user
             if(e.response && e.response.data){
                 this.setState({ message:e.response.data.message, isAlert:true })
             }
@@ -56,6 +58,7 @@ class Login extends React.Component{
         }
     }
 
+    //sebelum pengecekan request lakukan validasi terlebih dahulu
     validation = () => {
         if(!this.state.username || !this.state.password){
             this.setState({ message:'Mohon isi username dan password anda',isAlert:true })

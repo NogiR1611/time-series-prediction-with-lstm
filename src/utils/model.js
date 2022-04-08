@@ -8,16 +8,18 @@ export const vanillaModel = () => {
 
     tf.ENV.set('WEBGL_PACK',false);
 
+    //ekstrasi parameter dari tempat penyimpanan redux
     const { parameter } = store.getState();
 
-    const { memory_cells } = parameter;
+    //ekstrasi memory cells dari parameter
+    const { memoryCells } = parameter;
     
     //input layer
-    model.add(tf.layers.dense({ inputShape: [null, 1], units: 512 }));
+    model.add(tf.layers.dense({ units: 512, inputShape: [null, 1] }));
     
     //hidden layer
     model.add(tf.layers.lstm({
-        units: memory_cells, 
+        units: memoryCells, 
         inputShape: [null, 1],
         returnSequences: true,
     }));
@@ -35,26 +37,29 @@ export const stackedModel = () => {
 
     console.log('model used : stack model');
 
-    const {parameter} = store.getState();
+    //ekstrasi parameter dari tempat penyimpanan redux
+    const { parameter } = store.getState();
 
-    const {memory_cells} = parameter;
+    //ekstrasi memory cells dari parameter
+    const { memoryCells } = parameter;
 
     //input layer
     model.add(tf.layers.dense({ units: 512, inputShape: [null, 1] }));
     
-    //hidden layer
+    //hidden layer ke 1
     model.add(tf.layers.lstm({
-        units: memory_cells, 
+        units: memoryCells, 
         inputShape: [null, 1],
         returnSequences: true,
     }));
 
-    //output layer
+    //hidden layer ke 2
     model.add(tf.layers.lstm({
-        units: memory_cells, 
+        units: memoryCells, 
         returnSequences: true,
     }));
 
+    //output layer
     model.add(tf.layers.dense({ units: 1, returnSequences: true }));
 
     return model;
@@ -67,9 +72,11 @@ export const BiLSTMModel = () => {
 
     console.log('model used : bilstm model');
 
+    //ekstrasi parameter dari tempat penyimpanan redux
     const { parameter } = store.getState();
 
-    const { memory_cells } = parameter;
+    //ekstrasi memory cells dari parameter
+    const { memoryCells } = parameter;
 
     //input layer
     model.add(tf.layers.dense({ units: 512, inputShape: [null, 1] }));
@@ -77,7 +84,7 @@ export const BiLSTMModel = () => {
     //hidden layer
     const BiLstmLayers = tf.layers.bidirectional({
         layer : tf.layers.lstm({ 
-            units: memory_cells, 
+            units: memoryCells, 
             returnSequences: true,
             unitForgetBias: true
         }),
